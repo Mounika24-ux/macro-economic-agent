@@ -1,0 +1,38 @@
+# Core Scientific & Data Processing
+numpy>=1.26.0,<2.3.0
+pandas>=2.2.0,<2.3.0
+scikit-learn>=1.4.0,<1.6.0
+scipy>=1.12.0,<1.15.0
+
+# Database & Schema Validation
+SQLAlchemy>=2.0.25,<2.1.0
+pydantic>=2.6.0,<2.11.0
+pydantic-settings>=2.2.0,<2.7.0
+
+# HTTP & API Integrations
+requests>=2.31.0,<2.33.0
+httpx>=0.27.0,<0.29.0
+python-dotenv>=1.0.1,<1.1.0
+apify-client>=1.6.0,<1.9.0
+tavily-python>=0.3.3,<0.6.0
+exa-py>=1.0.7,<1.9.0
+yfinance>=0.2.36,<0.2.55
+
+# Natural Language Processing & Sentiment
+vaderSentiment>=3.3.2,<3.4.0
+textblob>=0.18.0,<0.19.0
+
+# Visualizations & Dashboard
+matplotlib>=3.8.0,<3.10.0
+seaborn>=0.13.0,<0.14.0
+plotly>=5.19.0,<6.0.0
+streamlit>=1.32.0,<1.42.0
+
+# Model Persistence & Utilities
+joblib>=1.3.2,<1.5.0
+rich>=13.7.0,<14.0.0
+
+# Testing & Quality Assurance
+pytest>=8.0.0,<8.4.0
+pytest-cov>=4.1.0,<6.1.0
+pytest-mock>=3.12.0,<3.15.0
