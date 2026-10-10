@@ -9,16 +9,17 @@ A production-grade, reproducible, and fully tested Python 3.12 macroeconomic int
 The **Macroeconomic Sentiment Agent** provides automated macroeconomic event tracking, news collection, natural language processing sentiment analysis, quantitative feature engineering, and non-leaking machine learning evaluation of trading strategies.
 
 ### Key Capabilities:
-1. **Macroeconomic Calendar Ingestion**: Extracts economic releases (CPI, Nonfarm Payrolls, FOMC Interest Rates, GDP, PMIs) over configurable lookback windows (default 180 days) via Apify with custom actor mapping.
-2. **AI-Powered News Ingestion**: Ingests macroeconomic news via Tavily and Exa search APIs with automatic URL canonicalization and title deduplication.
-3. **Transparent Financial Sentiment Analysis**: Rule and lexicon-based NLP scoring (combining VADER and macroeconomic domain dictionaries) classifying sentiment, regime bias (*dovish expansion*, *hawkish tightening*, *recessionary*), and confidence.
-4. **Idempotent Data Layer**: SQLite database orchestrated with SQLAlchemy models, relational indexes, and CSV import/export facilities.
-5. **No-Lookahead Feature Engineering**: Generates event surprise deltas, countdown timers to high-impact releases, rolling sentiment momentum, and market technicals with strict temporal alignment.
-6. **Strategy Permutation Simulation**: Simulates parameter grids (stop-loss %, take-profit %, lookbacks, sentiment filters) with realistic commissions and basis-point slippage.
-7. **Chronological Walk-Forward ML Validation**: Evaluates Ridge Regression, ElasticNet, and Tree Ensembles (RandomForest, GradientBoosting) with expanding/rolling windows and a purge embargo to prevent label autocorrelation leakage.
-8. **Financial Metrics Engine**: Calculates annualized Sharpe ratio, Sortino ratio (with downside semi-variance), Maximum Drawdown, Win Rate, and Calmar ratio across out-of-sample periods.
-9. **Visual Artifacts & Reporting**: Produces static publication charts, interactive Plotly visualizations, a one-page `reports/macro_outlook.md`, and a comprehensive quantitative `reports/evaluation_report.md`.
-10. **Interactive Dashboard**: Full-featured multi-tab Streamlit dashboard (`app.py`).
+1. **Zero-Cost Public Macro Ingestion (FRED & Central Bank Feeds)**: Ingests 100% free, authentic historical releases (CPI, Nonfarm Payrolls, Unemployment Rate, Fed Funds Rate, GDP, Initial Claims) from the Federal Reserve Bank of St. Louis (FRED) and real-time press releases from the Federal Reserve Board RSS feed without requiring paid subscriptions or API credits.
+2. **Apify Economic Calendar Ingestion (Optional)**: Configurable actor runner supporting Investing.com/ForexFactory calendar scrapers via Apify's free tier credits.
+3. **AI Search Ingestion (Tavily & Exa)**: Ingests macroeconomic news via Tavily and Exa search APIs within their free tiers, featuring automatic URL canonicalization and title deduplication.
+4. **Transparent Financial Sentiment Analysis**: Rule and lexicon-based NLP scoring (combining VADER and macroeconomic domain dictionaries) classifying sentiment, regime bias (*dovish expansion*, *hawkish tightening*, *recessionary*), and confidence.
+5. **Idempotent Data Layer**: SQLite database orchestrated with SQLAlchemy models, relational indexes, and CSV import/export facilities.
+6. **No-Lookahead Feature Engineering**: Generates event surprise deltas, countdown timers to high-impact releases, rolling sentiment momentum, and market technicals with strict temporal alignment.
+7. **Strategy Permutation Simulation**: Simulates parameter grids (stop-loss %, take-profit %, lookbacks, sentiment filters) with realistic commissions and basis-point slippage.
+8. **Chronological Walk-Forward ML Validation**: Evaluates Ridge Regression, ElasticNet, and Tree Ensembles (RandomForest, GradientBoosting) with expanding/rolling windows and a purge embargo to prevent label autocorrelation leakage.
+9. **Financial Metrics Engine**: Calculates annualized Sharpe ratio, Sortino ratio (with downside semi-variance), Maximum Drawdown, Win Rate, and Calmar ratio across out-of-sample periods.
+10. **Visual Artifacts & Reporting**: Produces static publication charts, interactive Plotly visualizations, a one-page `reports/macro_outlook.md`, and a comprehensive quantitative `reports/evaluation_report.md`.
+11. **Interactive Dashboard**: Full-featured multi-tab Streamlit dashboard (`app.py`).
 
 ---
 
@@ -131,9 +132,25 @@ Copy-Item .env.example .env
    ```
 
 ### 4. Resilient Fallback & Demonstration Modes
-- **`PIPELINE_MODE=live`**: Uses active API keys for Apify, Tavily, and Exa.
-- **`PIPELINE_MODE=fallback`**: Uses public Yahoo Finance (`yfinance`) market data and local datasets when API keys are absent.
+- **`PIPELINE_MODE=fallback` (Recommended for Zero-Cost Real Data)**: Fetches 100% free authentic macroeconomic data from the **Federal Reserve Bank of St. Louis (FRED)**, official central bank news releases from the **Federal Reserve Board RSS**, and market prices from **Yahoo Finance (`yfinance`)** without spending any credits or API tokens.
+- **`PIPELINE_MODE=live`**: Uses active API keys for Apify, Tavily, and Exa within their free allowances.
 - **`PIPELINE_MODE=demo`**: Runs the entire pipeline seamlessly using **explicitly labeled synthetic benchmark data** (`is_synthetic=True`). Synthetic results are never misrepresented as real trading results.
+
+---
+
+## 🏛️ 5. Zero-Cost Public Data Sources & Methodology Disclosures
+
+### Public Economic Indicators (FRED / U.S. Government)
+The zero-cost pipeline retrieves authentic, unrevised historical series directly from the Federal Reserve Bank of St. Louis public data portal:
+- `CPIAUCSL`: Consumer Price Index for All Urban Consumers (Monthly)
+- `PAYEMS`: Total Nonfarm Payroll Employment (Monthly)
+- `UNRATE`: Civilian Unemployment Rate (Monthly)
+- `FEDFUNDS`: Federal Funds Effective Rate (Monthly)
+- `ICSA`: Initial Jobless Claims (Weekly)
+- `GDP`: Gross Domestic Product (Quarterly)
+
+> [!NOTE]
+> **Consensus Forecast Disclosure**: Official government statistical portals (FRED, Bureau of Labor Statistics) publish authentic *actual* releases but do not provide commercial Wall Street consensus forecasts (which are proprietary to Bloomberg, Refinitiv, or Dow Jones surveys). In free public mode, the system calculates the historical trailing prior delta $\Delta P_t = \text{Actual}_t - \text{Actual}_{t-1}$ as a transparent indicator surprise reference. When commercial scrapers (e.g. Apify/Investing.com) are connected, consensus forecasts are ingested directly.
 
 ---
 

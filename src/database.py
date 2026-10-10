@@ -360,6 +360,91 @@ class DatabaseManager:
 
         return inserted_count
 
+    def insert_engineered_features(self, symbol: str, feature_df: pd.DataFrame, is_synthetic: bool = False) -> int:
+        """Idempotently insert engineered feature matrix rows."""
+        if feature_df.empty:
+            return 0
+        inserted_count = 0
+        with self.session_scope() as session:
+            for idx, row in feature_df.iterrows():
+                ts = idx if isinstance(idx, (datetime, pd.Timestamp)) else row.get("timestamp_utc")
+                if not isinstance(ts, datetime):
+                    ts = parse_timestamp_to_utc(ts)
+                if not ts:
+                    continue
+                feat_dict = {k: v for k, v in row.items() if not str(k).startswith("target_")}
+                existing = session.query(EngineeredFeature).filter(EngineeredFeature.timestamp_utc == ts).first()
+                if not existing:
+                    rec = EngineeredFeature(
+                        timestamp_utc=ts,
+                        symbol=symbol,
+                        features_json=json.dumps(feat_dict, default=str),
+                        target_pnl_1d=float(row.get("target_pnl_1d")) if pd.notna(row.get("target_pnl_1d")) else None,
+                        target_pnl_5d=float(row.get("target_pnl_5d")) if pd.notna(row.get("target_pnl_5d")) else None,
+                        target_win_1d=int(row.get("target_win_1d")) if pd.notna(row.get("target_win_1d")) else None,
+                        target_win_5d=int(row.get("target_win_5d")) if pd.notna(row.get("target_win_5d")) else None,
+                        is_synthetic=is_synthetic
+                    )
+                    session.add(rec)
+                    inserted_count += 1
+                else:
+                    existing.features_json = json.dumps(feat_dict, default=str)
+                    existing.target_pnl_1d = float(row.get("target_pnl_1d")) if pd.notna(row.get("target_pnl_1d")) else None
+        return inserted_count
+
+    def insert_strategy_results(self, run_id: str, symbol: str, strategy_df: pd.DataFrame, is_synthetic: bool = False) -> int:
+        """Insert strategy grid permutation results."""
+        if strategy_df.empty:
+            return 0
+        inserted_count = 0
+        with self.session_scope() as session:
+            for _, row in strategy_df.iterrows():
+                rec = StrategyResult(
+                    run_id=run_id,
+                    symbol=symbol,
+                    strategy_name=str(row.get("strategy_name", "Strategy")),
+                    parameters_json=json.dumps(row.get("parameters", {}), default=str) if isinstance(row.get("parameters"), dict) else str(row.get("parameters", "{}")),
+                    gross_pnl=float(row.get("gross_pnl", 0.0)),
+                    net_pnl=float(row.get("net_pnl", 0.0)),
+                    total_return_pct=float(row.get("total_return_pct", 0.0)),
+                    sharpe_ratio=float(row.get("sharpe_ratio", 0.0)),
+                    sortino_ratio=float(row.get("sortino_ratio", 0.0)),
+                    max_drawdown_pct=float(row.get("max_drawdown_pct", 0.0)),
+                    win_rate_pct=float(row.get("win_rate_pct", 0.0)),
+                    total_trades=int(row.get("total_trades", 0)),
+                    profit_factor=float(row.get("profit_factor", 0.0)) if pd.notna(row.get("profit_factor")) else None,
+                    is_synthetic=is_synthetic
+                )
+                session.add(rec)
+                inserted_count += 1
+        return inserted_count
+
+    def insert_model_predictions(self, run_id: str, wf_results: Dict[str, Any], is_synthetic: bool = False) -> int:
+        """Insert out-of-sample model predictions across folds."""
+        oos_dates = wf_results.get("oos_dates", [])
+        oos_actuals = wf_results.get("oos_actuals", [])
+        oos_preds = wf_results.get("oos_predictions", {})
+        if not oos_dates or not oos_actuals:
+            return 0
+        inserted_count = 0
+        with self.session_scope() as session:
+            for model_name, preds in oos_preds.items():
+                for i, (d_str, y_t, y_p) in enumerate(zip(oos_dates, oos_actuals, preds)):
+                    ts = parse_timestamp_to_utc(d_str) or datetime.now(timezone.utc)
+                    rec = ModelPrediction(
+                        run_id=run_id,
+                        fold_index=1,
+                        model_name=model_name,
+                        target_name="target_pnl_1d",
+                        timestamp_utc=ts,
+                        y_true=float(y_t),
+                        y_pred=float(y_p),
+                        is_synthetic=is_synthetic
+                    )
+                    session.add(rec)
+                    inserted_count += 1
+        return inserted_count
+
     # --- CSV Export & Import ---
 
     def export_table_to_csv(self, table_name: str, target_csv_path: Union[str, Path]) -> Path:

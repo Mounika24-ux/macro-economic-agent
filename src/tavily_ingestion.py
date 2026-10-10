@@ -37,7 +37,7 @@ class TavilyNewsIngestion:
         raw_output_dir: Optional[Path] = None
     ):
         settings = get_settings()
-        self.api_key = api_key or settings.tavily_api_key
+        self.api_key = api_key if api_key is not None else settings.tavily_api_key
         self.max_results_per_query = max_results_per_query or settings.tavily_max_results_per_topic
         self.raw_output_dir = raw_output_dir or settings.raw_data_dir
         self.raw_output_dir.mkdir(parents=True, exist_ok=True)
@@ -45,8 +45,56 @@ class TavilyNewsIngestion:
 
     @property
     def is_configured(self) -> bool:
-        """Check if Tavily API key is provided."""
-        return bool(self.api_key and self.api_key.strip() and not self.api_key.startswith("your_"))
+        """Check if Tavily API key is provided and non-placeholder."""
+        if not self.api_key or not self.api_key.strip():
+            return False
+        if self.api_key.startswith("your_") or "key_here" in self.api_key:
+            return False
+        return True
+
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test Tavily API key authentication with a minimal test query (1 result).
+
+        Returns:
+            Dict with 'status': 'OK' | 'AUTH_FAILED' | 'ERROR' and details.
+        """
+        if not self.is_configured:
+            return {
+                "status": "UNCONFIGURED",
+                "error_message": "TAVILY_API_KEY is not configured in .env"
+            }
+
+        try:
+            payload = {
+                "api_key": self.api_key,
+                "query": "US economy Federal Reserve",
+                "max_results": 1,
+                "search_depth": "basic"
+            }
+            resp = requests.post(self.endpoint, json=payload, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "status": "OK",
+                    "results_count": len(data.get("results", [])),
+                    "response_time": data.get("response_time")
+                }
+            elif resp.status_code in [401, 403]:
+                return {
+                    "status": "AUTH_FAILED",
+                    "error_message": "Invalid Tavily API Key (HTTP 401/403)."
+                }
+            else:
+                return {
+                    "status": "ERROR",
+                    "error_message": f"Tavily API returned HTTP {resp.status_code}: {resp.text}"
+                }
+        except Exception as e:
+            return {
+                "status": "CONNECTION_FAILED",
+                "error_message": f"Failed to connect to Tavily: {str(e)}"
+            }
 
     def fetch_macro_news(
         self,
@@ -148,7 +196,7 @@ class TavilyNewsIngestion:
             except Exception as e:
                 logger.error(f"Error querying Tavily for topic '{topic}': {e}")
 
-        # Save raw responses
+        # Save raw responses for auditability
         if all_raw_results:
             ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             raw_path = self.raw_output_dir / f"tavily_raw_news_{ts_str}.json"

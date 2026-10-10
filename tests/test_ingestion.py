@@ -47,15 +47,15 @@ def test_apify_schema_mapping():
 
 def test_unconfigured_clients_handle_gracefully():
     # Empty token clients should return empty list and report not configured
-    apify = ApifyCalendarIngestion(api_token=None)
+    apify = ApifyCalendarIngestion(api_token="", actor_id="")
     assert not apify.is_configured
     assert apify.fetch_calendar_events() == []
 
-    tavily = TavilyNewsIngestion(api_key=None)
+    tavily = TavilyNewsIngestion(api_key="")
     assert not tavily.is_configured
     assert tavily.fetch_macro_news() == []
 
-    exa = ExaNewsIngestion(api_key=None)
+    exa = ExaNewsIngestion(api_key="")
     assert not exa.is_configured
     assert exa.fetch_macro_news() == []
 
@@ -68,3 +68,16 @@ def test_economic_calendar_synthetic_generator():
     assert all(e["is_synthetic"] is True for e in events)
     assert all("timestamp_utc" in e for e in events)
     assert any("CPI" in e["event_name"] or "Payrolls" in e["event_name"] for e in events)
+
+
+def test_public_macro_ingestion_free_fred_data():
+    from src.public_data_ingestion import PublicMacroIngestion
+    ingest = PublicMacroIngestion()
+    events = ingest.fetch_free_macro_events(lookback_days=180)
+
+    # Should fetch real events from FRED
+    assert len(events) > 0
+    assert all(e["is_synthetic"] is False for e in events)
+    assert any("CPI" in e["event_name"] or "Payrolls" in e["event_name"] or "Rate" in e["event_name"] for e in events)
+    assert all("timestamp_utc" in e for e in events)
+

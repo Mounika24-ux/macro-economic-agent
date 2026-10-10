@@ -31,7 +31,7 @@ CALENDAR_INDICATORS = [
 
 
 class EconomicCalendarCoordinator:
-    """Coordinates economic event retrieval across live and synthetic modes."""
+    """Coordinates economic event retrieval across live, public-free, and synthetic modes."""
 
     def __init__(self, apify_client: Optional[ApifyCalendarIngestion] = None):
         self.apify_client = apify_client or ApifyCalendarIngestion()
@@ -47,7 +47,7 @@ class EconomicCalendarCoordinator:
 
         Args:
             lookback_days: Number of days of historical events.
-            mode: 'live', 'fallback', or 'demo'.
+            mode: 'live', 'fallback' (free public FRED data), or 'demo' (synthetic data).
 
         Returns:
             List of economic event dictionaries.
@@ -59,9 +59,19 @@ class EconomicCalendarCoordinator:
             events = self.apify_client.fetch_calendar_events(lookback_days=lookback_days)
             if events:
                 return events
-            logger.warning("Live Apify scraping returned 0 events. Switching to demonstration mode.")
+            logger.warning("Live Apify scraping returned 0 events. Switching to public FRED fallback.")
 
-        # Fallback / Demonstration mode with explicitly labeled synthetic data
+        if selected_mode in ["fallback", "public_free", "live"]:
+            try:
+                from src.public_data_ingestion import PublicMacroIngestion
+                public_ingest = PublicMacroIngestion()
+                events = public_ingest.fetch_free_macro_events(lookback_days=lookback_days)
+                if events:
+                    return events
+            except Exception as e:
+                logger.warning(f"Could not load public FRED events: {e}. Using synthetic demo generator.")
+
+        # Demonstration mode with explicitly labeled synthetic data
         logger.info(f"Generating explicitly labeled synthetic economic events for {lookback_days} days (Demo Mode)...")
         return self.generate_synthetic_events(lookback_days=lookback_days)
 

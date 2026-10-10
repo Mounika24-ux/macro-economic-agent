@@ -8,6 +8,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional
 
+# Inject native Windows certificate store for SSL verification if available
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
+
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
     from pydantic import Field

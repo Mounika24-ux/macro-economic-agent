@@ -45,15 +45,17 @@ class ModelTrainer:
         if feature_cols:
             selected_features = [c for c in feature_cols if c in clean_df.columns]
         else:
-            # Exclude targets, identifiers, and synthetic flags from X
+            # Exclude targets, identifiers, text metadata, and synthetic flags from X
             exclude_cols = {
-                "symbol", "is_synthetic", "open", "high", "low", "close", "volume",
+                "id", "symbol", "source", "provider", "is_synthetic",
+                "open", "high", "low", "close", "volume",
                 "target_pnl_1d", "target_pnl_5d", "target_win_1d", "target_win_5d"
             }
-            selected_features = [c for c in clean_df.columns if c not in exclude_cols]
+            numeric_cols = clean_df.select_dtypes(include=[np.number]).columns
+            selected_features = [c for c in numeric_cols if c not in exclude_cols]
 
-        X = clean_df[selected_features].fillna(0.0)
-        y = clean_df[target_col]
+        X = clean_df[selected_features].astype(float).fillna(0.0)
+        y = clean_df[target_col].astype(float)
 
         logger.info(f"Prepared dataset: {len(X)} samples, {len(selected_features)} features for target '{target_col}'.")
         return X, y, selected_features
@@ -88,12 +90,14 @@ class ModelTrainer:
             preds_test = model.predict(X_test_scaled)
 
             # Compute regression metrics
+            mse_train = mean_squared_error(y_train, preds_train)
             mse_test = mean_squared_error(y_test, preds_test)
             mae_test = mean_absolute_error(y_test, preds_test)
             r2_test = r2_score(y_test, preds_test) if len(y_test) > 2 else 0.0
 
             # Directional accuracy (sign correctness)
-            dir_acc = np.mean(np.sign(preds_test) == np.sign(y_test)) if len(y_test) > 0 else 0.0
+            dir_acc_train = np.mean(np.sign(preds_train) == np.sign(y_train)) if len(y_train) > 0 else 0.0
+            dir_acc_test = np.mean(np.sign(preds_test) == np.sign(y_test)) if len(y_test) > 0 else 0.0
 
             # Extract feature importances or coefficients
             if hasattr(model, "feature_importances_"):
@@ -106,11 +110,14 @@ class ModelTrainer:
             results[name] = {
                 "model": model,
                 "scaler": scaler,
-                "mse_train": float(mean_squared_error(y_train, preds_train)),
+                "mse_train": float(mse_train),
                 "mse_test": float(mse_test),
                 "mae_test": float(mae_test),
                 "r2_test": float(r2_test),
-                "directional_accuracy": float(dir_acc),
+                "directional_accuracy_train": float(dir_acc_train),
+                "directional_accuracy_test": float(dir_acc_test),
+                "directional_accuracy": float(dir_acc_test),
+                "predictions_train": preds_train.tolist(),
                 "predictions_test": preds_test.tolist(),
                 "feature_importances": importances,
             }

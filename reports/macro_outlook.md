@@ -1,9 +1,9 @@
 # CrowdWisdomTrading: One-Page Macroeconomic Outlook
 
-**Publication Date**: 2026-10-10 02:17 UTC  
+**Publication Date**: 2026-10-10 03:08 UTC  
 **Data Integrity Status**: ⚠️ **DEMONSTRATION MODE (SYNTHETIC BENCHMARK DATA)**  
 **Asset Benchmark Analyzed**: `SPY`  
-**Lookback Period**: 2026-04-13 to 2026-10-09 (55 events, 80 articles, 130 price bars)
+**Lookback Period**: 2026-07-13 to 2026-10-07 (28 events, 80 articles, 65 price bars)
 
 ---
 
@@ -12,28 +12,27 @@
 | Dimension | Observation | Signal / Stance |
 |:---|:---|:---|
 | **Consensus Macro Tone** | Average Sentiment Score: **+0.071** | **NEUTRAL / BALANCED** |
-| **Monetary Policy Stance** | High-impact central bank announcements monitored: **7** | Data-dependent policy calibration |
-| **Inflation Dynamics** | CPI / PCE indicators recorded: **10** | Disinflation trend with localized service persistence |
-| **Labor Market Health** | Employment & Payroll prints analyzed: **18** | Steady payroll expansion; normalized wage growth |
-| **Growth & Activity** | GDP & Output prints analyzed: **6** | Trend-level economic resilience |
+| **Monetary Policy Stance** | High-impact central bank announcements monitored: **1** | Data-dependent policy calibration |
+| **Inflation Dynamics** | CPI / PCE indicators recorded: **6** | Disinflation trend with localized service persistence |
+| **Labor Market Health** | Employment & Payroll prints analyzed: **12** | Steady payroll expansion; normalized wage growth |
+| **Growth & Activity** | GDP & Output prints analyzed: **2** | Trend-level economic resilience |
 
 ---
 
 ## 2. Key Macroeconomic Indicator Observations
 
 ### Inflation & Price Stability
-- **US Core CPI MoM** (2026-08-18): Actual: `0.11` | Forecast: `0.1` | Surprise: `+0.01`
-- **US Core CPI MoM** (2026-09-08): Actual: `0.29` | Forecast: `0.31` | Surprise: `-0.02`
-- **US CPI YoY** (2026-09-23): Actual: `3.49` | Forecast: `2.97` | Surprise: `+0.52`
+- **US CPI YoY** (2026-08-07): Actual: `3.47` | Forecast: `3.33` | Surprise: `+0.14`
+- **US CPI YoY** (2026-09-08): Actual: `2.36` | Forecast: `2.43` | Surprise: `-0.07`
+- **US Core CPI MoM** (2026-10-01): Actual: `0.36` | Forecast: `0.48` | Surprise: `-0.12`
 
 ### Labor & Employment Trends
-- **US Nonfarm Payrolls** (2026-09-04): Actual: `240.56` | Forecast: `231.63` | Surprise: `+8.93`
-- **US Nonfarm Payrolls** (2026-09-10): Actual: `103.0` | Forecast: `115.44` | Surprise: `-12.44`
-- **US Initial Jobless Claims** (2026-09-24): Actual: `204.89` | Forecast: `207.36` | Surprise: `-2.47`
+- **US Nonfarm Payrolls** (2026-09-28): Actual: `187.04` | Forecast: `165.73` | Surprise: `+21.31`
+- **US Unemployment Rate** (2026-10-02): Actual: `3.66` | Forecast: `3.75` | Surprise: `-0.09`
+- **US Nonfarm Payrolls** (2026-10-07): Actual: `217.05` | Forecast: `243.42` | Surprise: `-26.37`
 
 ### Federal Reserve & Monetary Policy Guidance
-- **FOMC Interest Rate Decision** (2026-08-25): Rate Level: `5.12%`
-- **FOMC Interest Rate Decision** (2026-09-30): Rate Level: `4.88%`
+- **FOMC Interest Rate Decision** (2026-09-25): Rate Level: `5.41%`
 
 ---
 

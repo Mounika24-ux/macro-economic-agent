@@ -153,10 +153,13 @@ class WalkForwardValidator:
 
             for model_name, m_res in res.items():
                 fold_metric_entry["models"][model_name] = {
+                    "mse_train": m_res["mse_train"],
                     "mse_test": m_res["mse_test"],
                     "mae_test": m_res["mae_test"],
                     "r2_test": m_res["r2_test"],
-                    "directional_accuracy": m_res["directional_accuracy"],
+                    "directional_accuracy_train": m_res["directional_accuracy_train"],
+                    "directional_accuracy_test": m_res["directional_accuracy_test"],
+                    "directional_accuracy": m_res["directional_accuracy_test"],
                 }
                 all_oos_predictions[model_name].extend(m_res["predictions_test"])
 
@@ -168,6 +171,10 @@ class WalkForwardValidator:
         aggregate_metrics = {}
         oos_actuals_arr = np.array(all_oos_actuals)
 
+        # Friction per turnover (slippage + commission)
+        settings = get_settings()
+        friction_rate = (settings.slippage_bps * 1e-4) + 0.0001
+
         for model_name, preds_list in all_oos_predictions.items():
             preds_arr = np.array(preds_list)
             if len(preds_arr) > 0 and len(oos_actuals_arr) > 0:
@@ -177,10 +184,17 @@ class WalkForwardValidator:
                 total_variance = float(np.var(oos_actuals_arr))
                 r2_oos = float(1.0 - (mse_oos / total_variance)) if total_variance > 1e-9 else 0.0
 
-                # Construct ML-driven trading return series: Signal = sign(predicted return)
+                # Construct ML-driven trading return series with realistic execution costs
+                # Signal: +1 Long, -1 Short, 0 Flat
                 ml_signals = np.sign(preds_arr)
-                ml_returns = ml_signals * oos_actuals_arr
-                ml_return_series = pd.Series(ml_returns, index=all_oos_dates)
+                # Compute turnover friction on position change
+                prev_signals = np.roll(ml_signals, 1)
+                prev_signals[0] = 0.0  # Initial entry
+                turnover = np.abs(ml_signals - prev_signals)
+                costs = turnover * friction_rate
+
+                ml_net_returns = (ml_signals * oos_actuals_arr) - costs
+                ml_return_series = pd.Series(ml_net_returns, index=all_oos_dates)
                 ml_perf = evaluate_strategy_performance(ml_return_series, [], initial_capital=100_000.0)
 
                 aggregate_metrics[model_name] = {
@@ -194,8 +208,11 @@ class WalkForwardValidator:
                     "strategy_max_drawdown_pct": ml_perf["max_drawdown_pct"],
                 }
 
-        # Baseline Benchmark: Buy-and-Hold on OOS period
-        oos_asset_returns = pd.Series(all_oos_actuals, index=all_oos_dates)
+        # Baseline Benchmark: Buy-and-Hold on OOS period (with single entry fee)
+        benchmark_returns = oos_actuals_arr.copy()
+        if len(benchmark_returns) > 0:
+            benchmark_returns[0] -= friction_rate
+        oos_asset_returns = pd.Series(benchmark_returns, index=all_oos_dates)
         benchmark_perf = evaluate_strategy_performance(oos_asset_returns, [], initial_capital=100_000.0)
         aggregate_metrics["Benchmark_BuyAndHold"] = {
             "strategy_sharpe": benchmark_perf["sharpe_ratio"],
@@ -204,11 +221,16 @@ class WalkForwardValidator:
             "strategy_max_drawdown_pct": benchmark_perf["max_drawdown_pct"],
         }
 
-        # Save Best Model Artifact
-        best_model_name = max(
-            [m for m in aggregate_metrics.keys() if m != "Benchmark_BuyAndHold"],
-            key=lambda k: aggregate_metrics[k]["oos_directional_accuracy"]
-        )
+        # Select Best Model STRICTLY based on in-sample training fold performance (no OOS selection leakage)
+        candidate_models = [m for m in aggregate_metrics.keys() if m != "Benchmark_BuyAndHold"]
+        train_performance = {}
+        for m in candidate_models:
+            # Average in-sample training fold directional accuracy
+            fold_accs = [f["models"][m].get("directional_accuracy_train", 0.0) for f in fold_results if m in f["models"]]
+            train_performance[m] = np.mean(fold_accs) if fold_accs else 0.0
+
+        best_model_name = max(candidate_models, key=lambda k: train_performance.get(k, 0.0))
+
         if best_model_name in last_models:
             best_model_bundle = last_models[best_model_name]
             self.trainer.save_model_artifact(
@@ -218,6 +240,8 @@ class WalkForwardValidator:
                 feature_names=feature_names,
                 metadata={
                     "best_model_name": best_model_name,
+                    "selection_criterion": "highest_mean_train_directional_accuracy",
+                    "train_performance": train_performance,
                     "target": target_col,
                     "n_folds": len(folds),
                     "aggregate_metrics": aggregate_metrics[best_model_name],

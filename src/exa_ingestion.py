@@ -33,7 +33,7 @@ class ExaNewsIngestion:
         raw_output_dir: Optional[Path] = None
     ):
         settings = get_settings()
-        self.api_key = api_key or settings.exa_api_key
+        self.api_key = api_key if api_key is not None else settings.exa_api_key
         self.max_results = max_results or settings.exa_max_results
         self.raw_output_dir = raw_output_dir or settings.raw_data_dir
         self.raw_output_dir.mkdir(parents=True, exist_ok=True)
@@ -41,8 +41,57 @@ class ExaNewsIngestion:
 
     @property
     def is_configured(self) -> bool:
-        """Check if Exa API key is provided."""
-        return bool(self.api_key and self.api_key.strip() and not self.api_key.startswith("your_"))
+        """Check if Exa API key is provided and non-placeholder."""
+        if not self.api_key or not self.api_key.strip():
+            return False
+        if self.api_key.startswith("your_") or "key_here" in self.api_key:
+            return False
+        return True
+
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test Exa API key authentication with a minimal test query (1 result).
+
+        Returns:
+            Dict with 'status': 'OK' | 'AUTH_FAILED' | 'ERROR' and details.
+        """
+        if not self.is_configured:
+            return {
+                "status": "UNCONFIGURED",
+                "error_message": "EXA_API_KEY is not configured in .env"
+            }
+
+        try:
+            headers = {
+                "x-api-key": self.api_key,
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "query": "US Federal Reserve interest rates",
+                "numResults": 1
+            }
+            resp = requests.post(self.endpoint, json=payload, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "status": "OK",
+                    "results_count": len(data.get("results", []))
+                }
+            elif resp.status_code in [401, 403]:
+                return {
+                    "status": "AUTH_FAILED",
+                    "error_message": "Invalid Exa API Key (HTTP 401/403)."
+                }
+            else:
+                return {
+                    "status": "ERROR",
+                    "error_message": f"Exa API returned HTTP {resp.status_code}: {resp.text}"
+                }
+        except Exception as e:
+            return {
+                "status": "CONNECTION_FAILED",
+                "error_message": f"Failed to connect to Exa: {str(e)}"
+            }
 
     def fetch_macro_news(
         self,
